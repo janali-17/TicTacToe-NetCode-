@@ -8,6 +8,6 @@ public class GridPos : MonoBehaviour
     private void OnMouseDown()
     {
         Debug.Log("Click " + x +","+ y);
-        GameManger.Instance.OnGridClicked(x, y);
+        GameManger.Instance.OnGridClickedRpc(x, y,GameManger.Instance.GetPlayerType());
     }
 }

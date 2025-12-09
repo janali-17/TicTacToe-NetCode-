@@ -7,7 +7,7 @@ public class GameVisualManager : NetworkBehaviour
     private const float GRID_SIZE = 2.0f;
 
     [SerializeField] private Transform crossPrefab;
-    [SerializeField] private Transform TickPrefab;
+    [SerializeField] private Transform tickPrefab;
 
 
     private void Start()
@@ -17,14 +17,27 @@ public class GameVisualManager : NetworkBehaviour
 
     private void GameManger_OnGridPos(object sender, GameManger.OnGridPosEventArg e)
     {
-      SpawnObjectRpc(e.x, e.y);
+      SpawnObjectRpc(e.x, e.y,e.playerType);
     }
 
     [Rpc(SendTo.Server)]
-    private void SpawnObjectRpc(int x, int y)
+    private void SpawnObjectRpc(int x, int y, GameManger.PlayerType playerType)
     {
-        Transform spawnCrossTransform = Instantiate(crossPrefab,GetGridWorldPos(x,y),Quaternion.identity);
+        Transform prefab;
+        switch (playerType)
+        {
+            default:
+            case GameManger.PlayerType.Cross:
+                prefab = crossPrefab;
+                break;
+                case GameManger.PlayerType.Tick:
+                prefab = tickPrefab;
+                break;
+        }
+
+        Transform spawnCrossTransform = Instantiate(prefab,GetGridWorldPos(x,y),Quaternion.identity);
         spawnCrossTransform.GetComponent<NetworkObject>().Spawn(true);
+
     }    
 
     private Vector2 GetGridWorldPos(int x, int y)
