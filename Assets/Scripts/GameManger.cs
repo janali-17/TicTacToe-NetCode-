@@ -19,6 +19,8 @@ public class GameManger : NetworkBehaviour
     public event EventHandler OnGameStarted;
     public event EventHandler OnCurrentPlayerTypeChanged;
     public event EventHandler<OnGameWinEventArgs> OnGameWin;
+    public event EventHandler OnRematch;
+
     public class OnGameWinEventArgs : EventArgs
     {
         public Line line;
@@ -208,9 +210,10 @@ public class GameManger : NetworkBehaviour
 
     private void CheckWinner()
     {
-        for (int i = 0;i < lineList.Count;i++) {
+        for (int i = 0; i < lineList.Count; i++)
+        {
             Line line = lineList[i];
-            if(TestWinnerLine(line))
+            if (TestWinnerLine(line))
             {
                 currentPlayableType.Value = PlayerType.None;
                 TriggerOnGameWinRpc(i, playerTypeArray[line.centerGridPos.x, line.centerGridPos.y]);
@@ -228,6 +231,27 @@ public class GameManger : NetworkBehaviour
             line = line,
             winPlayerType = winPlayerType
         });
+    }
+
+    [Rpc(SendTo.Server)]
+    public void RematchRpc()
+    {
+        for (int x = 0; x < playerTypeArray.GetLength(0); x++)
+        {
+            for (int y = 0; y < playerTypeArray.GetLength(1); y++)
+            {
+                playerTypeArray[x,y] = PlayerType.None;
+            }
+        }
+        currentPlayableType.Value = PlayerType.Cross;
+
+        TriggerOnRematchRpc();
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void TriggerOnRematchRpc()
+    {
+        OnRematch?.Invoke(this, EventArgs.Empty);
     }
 
     private void NetworkManager_OnClientConnectedCallback(ulong obj)
