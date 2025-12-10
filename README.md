@@ -1,4 +1,4 @@
-#Tic Tac Toe Multiplayer (Unity Netcode)
+# Tic Tac Toe Multiplayer (Unity Netcode)
 
 This is a multiplayer Tic Tac Toe game created by Jan Ali Hassan using Unity Netcode for GameObjects.
 The project includes a fully synchronized turn-based system, win/tie detection, and simple UI for both players.
@@ -32,7 +32,7 @@ Only the server decides:
 
 All game states are synchronized between players through RPC calls.
 
-#Scripts Overview
+# Scripts Overview
 
 # GameManager
 Handles all gameplay logic, networking, turn system, win/tie detection, and rematch functionality.
