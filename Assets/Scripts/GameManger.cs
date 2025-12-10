@@ -1,4 +1,6 @@
+using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -16,15 +18,36 @@ public class GameManger : NetworkBehaviour
 
     public event EventHandler OnGameStarted;
     public event EventHandler OnCurrentPlayerTypeChanged;
+    public event EventHandler<OnGameWinEventArgs> OnGameWin;
+    public class OnGameWinEventArgs : EventArgs
+    {
+        public Line line;
+    }
+
+    public struct Line
+    {
+        public List<Vector2Int> gridVector2IntList;
+        public Vector2Int centerGridPos;
+        public Orientation orientation;
+    }
     public enum PlayerType
     {
         None,
         Cross,
         Tick,
     }
+    public enum Orientation
+    {
+        Horizontal,
+        Vertical,
+        DiagonalA,
+        DiagonalB,
+    }
 
     private PlayerType localPlayerType;
     private NetworkVariable<PlayerType> currentPlayableType = new NetworkVariable<PlayerType>();
+    private PlayerType[,] playerTypeArray;
+    private List<Line> lineList;
 
     private void Awake()
     {
@@ -33,16 +56,86 @@ public class GameManger : NetworkBehaviour
             Debug.Log("Already have Game Manager Instance");
         }
         Instance = this;
+
+        playerTypeArray = new PlayerType[3, 3];
+
+        lineList = new List<Line>
+        {
+            // Horizontal
+            new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(0,0), new Vector2Int(1,0), new Vector2Int(2,0), },
+                centerGridPos = new Vector2Int(1,0),
+                orientation = Orientation.Horizontal,
+            },
+              new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(0,1), new Vector2Int(1,1), new Vector2Int(2,1), },
+                centerGridPos = new Vector2Int(1,1),
+                orientation = Orientation.Horizontal,
+
+            },
+                new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(0,2), new Vector2Int(1,2), new Vector2Int(2,2), },
+                centerGridPos = new Vector2Int(1,2),
+                orientation = Orientation.Horizontal,
+            },
+            // Vertical
+                new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(0,0), new Vector2Int(0,1), new Vector2Int(0,2), },
+                centerGridPos = new Vector2Int(0,1),
+                orientation = Orientation.Vertical,
+
+            },
+                       new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(1,0), new Vector2Int(1,1), new Vector2Int(1,2), },
+                centerGridPos = new Vector2Int(1,1),
+                orientation = Orientation.Vertical,
+            },
+                              new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(2,0), new Vector2Int(2,1), new Vector2Int(2,2), },
+                centerGridPos = new Vector2Int(2,1),
+                orientation = Orientation.Vertical,
+            },
+            // Diagonal
+                   new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(0,0), new Vector2Int(1,1), new Vector2Int(2,2), },
+                centerGridPos = new Vector2Int(1,1),
+                orientation = Orientation.DiagonalA,
+            },
+                          new Line
+            {
+                gridVector2IntList = new List<Vector2Int>{ new Vector2Int(0,2), new Vector2Int(1,1), new Vector2Int(2,0), },
+                centerGridPos = new Vector2Int(1,1),
+                orientation = Orientation.DiagonalB,
+
+            },
+
+        };
     }
 
     [Rpc(SendTo.Server)]
     public void OnGridClickedRpc(int x, int y, PlayerType playerType)
     {
         Debug.Log("Grid Pos Clicked" + x + ", " + y);
+
         if (playerType != currentPlayableType.Value)
         {
             return;
         }
+
+        if (playerTypeArray[x, y] != PlayerType.None)
+        {
+            return;
+        }
+
+        playerTypeArray[x, y] = playerType;
+
         OnGridPos?.Invoke(this, new OnGridPosEventArg
         {
             x = x,
@@ -60,12 +153,13 @@ public class GameManger : NetworkBehaviour
                 currentPlayableType.Value = PlayerType.Cross;
                 break;
         }
+        CheckWinner();
     }
 
     [Rpc(SendTo.ClientsAndHost)]
     private void TriggerOnGameStartedRpc()
     {
-        OnGameStarted?.Invoke(this,EventArgs.Empty);
+        OnGameStarted?.Invoke(this, EventArgs.Empty);
     }
 
     public override void OnNetworkSpawn()
@@ -89,11 +183,44 @@ public class GameManger : NetworkBehaviour
 
         currentPlayableType.OnValueChanged += (PlayerType oldPlayerType, PlayerType newPlayerType) =>
         {
-            OnCurrentPlayerTypeChanged?.Invoke(this,EventArgs.Empty);
+            OnCurrentPlayerTypeChanged?.Invoke(this, EventArgs.Empty);
         };
     }
 
 
+    private bool TestWinnerline(PlayerType aPlayerType, PlayerType bPlayerType, PlayerType cPlayerType)
+    {
+        return
+            aPlayerType != PlayerType.None &&
+            aPlayerType == bPlayerType &&
+            bPlayerType == cPlayerType;
+    }
+
+    private bool TestWinnerLine(Line line)
+    {
+        return TestWinnerline(
+            playerTypeArray[line.gridVector2IntList[0].x, line.gridVector2IntList[0].y],
+            playerTypeArray[line.gridVector2IntList[1].x, line.gridVector2IntList[1].y],
+            playerTypeArray[line.gridVector2IntList[2].x, line.gridVector2IntList[2].y]
+            );
+    }
+
+    private void CheckWinner()
+    {
+        foreach(Line line in lineList)
+        {
+            if(TestWinnerLine(line))
+            {
+                currentPlayableType.Value = PlayerType.None;
+                OnGameWin?.Invoke(this, new OnGameWinEventArgs
+                {
+                   line = line
+                });
+                break;
+            }
+        }
+
+    }
 
     private void NetworkManager_OnClientConnectedCallback(ulong obj)
     {
@@ -107,5 +234,5 @@ public class GameManger : NetworkBehaviour
 
     public PlayerType GetPlayerType() { return localPlayerType; }
 
-    public PlayerType GetCurrentPlayerType () { return currentPlayableType.Value; }
+    public PlayerType GetCurrentPlayerType() { return currentPlayableType.Value; }
 }
