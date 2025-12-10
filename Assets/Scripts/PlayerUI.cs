@@ -29,6 +29,7 @@ public class PlayerUI : MonoBehaviour
 
     private void GameManager_OnGameStarted(object sender, System.EventArgs e)
     {
+        Debug.Log("Game Started");
         if(GameManger.Instance.GetPlayerType() == GameManger.PlayerType.Cross)
         {
            crossYouGameObject.SetActive(true);

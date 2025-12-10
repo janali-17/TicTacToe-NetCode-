@@ -60,14 +60,12 @@ public class GameManger : NetworkBehaviour
                 currentPlayableType.Value = PlayerType.Cross;
                 break;
         }
-        TriggerOnCurrentPlayerTypeChangedRpc();
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void TriggerOnCurrentPlayerTypeChangedRpc()
+    private void TriggerOnGameStartedRpc()
     {
-        OnCurrentPlayerTypeChanged?.Invoke(this, EventArgs.Empty);
-
+        OnGameStarted?.Invoke(this,EventArgs.Empty);
     }
 
     public override void OnNetworkSpawn()
@@ -102,6 +100,7 @@ public class GameManger : NetworkBehaviour
         if (NetworkManager.Singleton.ConnectedClientsList.Count == 2)
         {
             currentPlayableType.Value = PlayerType.Cross;
+            TriggerOnGameStartedRpc();
         }
     }
 
