@@ -22,6 +22,7 @@ public class GameManger : NetworkBehaviour
     public class OnGameWinEventArgs : EventArgs
     {
         public Line line;
+        public PlayerType winPlayerType;
     }
 
     public struct Line
@@ -207,19 +208,26 @@ public class GameManger : NetworkBehaviour
 
     private void CheckWinner()
     {
-        foreach(Line line in lineList)
-        {
+        for (int i = 0;i < lineList.Count;i++) {
+            Line line = lineList[i];
             if(TestWinnerLine(line))
             {
                 currentPlayableType.Value = PlayerType.None;
-                OnGameWin?.Invoke(this, new OnGameWinEventArgs
-                {
-                   line = line
-                });
+                TriggerOnGameWinRpc(i, playerTypeArray[line.centerGridPos.x, line.centerGridPos.y]);
                 break;
             }
         }
+    }
 
+    [Rpc(SendTo.ClientsAndHost)]
+    private void TriggerOnGameWinRpc(int lineIndex, PlayerType winPlayerType)
+    {
+        Line line = lineList[lineIndex];
+        OnGameWin?.Invoke(this, new OnGameWinEventArgs
+        {
+            line = line,
+            winPlayerType = winPlayerType
+        });
     }
 
     private void NetworkManager_OnClientConnectedCallback(ulong obj)
